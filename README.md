@@ -55,6 +55,68 @@ Tests: `uv run pytest`.
 
 (This is for the robots)
 
+Orientation for an agent working in or forking this repo. Read it before changing anything under `inbox/`.
+
+**The invariant.** A note must always exist somewhere: in Discord until it's safely written to `inbox.md`, and in `inbox.md` until it's filed into a week file. Every ordering choice in `cmd_pull` serves this, so keep it intact.
+
+- Order is write (temp file + `os.replace`), then commit, then delete. Never delete from Discord before the write succeeds.
+- `pull` only appends. It never rewrites or removes existing `inbox.md` content; removing entries is the reader's job.
+- Messages with no text stay in Discord. That covers photos, and also every message when Message Content Intent is off, in which case they all arrive blank.
+- A failed delete is harmless: the ID marker prevents a duplicate on the next run.
+
+**The `inbox.md` contract.** The file is read by people and by arbitrary LLMs, following `AGENTS.md` in the private todo repo (not in this repo).
+
+- Entry format: `- Sun Nov 8, 9:14 PM: first line <!-- discord:<message id> -->`. Continuation lines are indented two spaces.
+- `<!-- discord:(\d+) -->` is the dedupe key. If you change the format, migrate existing entries, or messages will be added twice.
+- `HEADER` is written only when the file is created.
+
+**Map.**
+
+- `inbox/inbox`: bash wrapper. It resolves its own symlink with `readlink -f`, then runs `inbox.py` via `uv run --project <repo root>`.
+- `inbox/inbox.py`: all the logic. The seams the tests replace are `load_config`, `fetch_messages`, `delete_message`, `add_to_inbox`, `commit_inbox`.
+- `.env` (gitignored) sits at the repo root and is found relative to the script, not the working directory. `INBOX_FILE` is optional and defaults to `~/Documents/todo/inbox.md`.
+- `deploy/`: systemd user units. `ExecStart` is an absolute path. Install with `systemctl --user link` on both files, then `systemctl --user enable --now inbox-pull.timer`.
+- `tests/test_inbox.py`: 4 tests, no network, no git. Keep the test count proportionate to the stakes; this is a personal tool.
+
+**Exit codes.** `pull` exits:
+
+- 0 on success, including "nothing new" and textless messages skipped
+- 1 if Discord is unreachable, the write fails, or any delete fails
+- 2 on bad usage
+
+The systemd `Restart=on-failure` retry depends on that 1, so don't turn failures into exit 0.
+
+**Deliberately absent. Ask Acacia before adding any of these:**
+
+- A gateway connection, always-on bot, or VPS service. The bot showing "offline" is correct.
+- Pushing from `pull`. It commits only; she pushes by hand.
+- Any LLM step in the timer. A morning pre-sort idea is parked in `docs/HUMAN.md`.
+- Anything Claude-specific in the inbox path. It has to stay LLM-agnostic. An earlier version used a SessionStart hook and an `ack` command, and was replaced the same day (see DECISIONS.md).
+- Attachments.
+
+**Discord API notes.**
+
+- It uses REST v10 with `Authorization: Bot <token>`.
+- Messages come back newest first, paginated with `before`. Message IDs (snowflakes) sort chronologically.
+- Types 0 and 19 are user messages; everything else is skipped.
+- On a 429, `retry_after` is honored: at most 3 tries, waiting at most 10 seconds.
+- Message content needs the privileged intent even over REST.
+
+**Working here.** Follow `CLAUDE.md`:
+
+- `docs/SPEC.md` is frozen.
+- Log decisions in `docs/DECISIONS.md`, with who contributed what.
+- Steps a human has to do go in `docs/HUMAN.md`.
+- Notes for the next agent go in `docs/HANDOFF.md`.
+- Keep commits small, authored as yourself.
+
+**If forking:**
+
+- Change `ExecStart` in `deploy/inbox-pull.service`.
+- Set `INBOX_FILE`, and adjust `HEADER`, which names Acacia.
+- Give the LLM in your todo folder the rule "remove an entry only after it's filed."
+- `strftime("%-d")` works on Linux and macOS but not Windows.
+
 ## Docs
 
 - [docs/SPEC.md](docs/SPEC.md): the original (deliberately thin) spec
