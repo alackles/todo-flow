@@ -1,29 +1,59 @@
 # todo-flow
 
-Plumbing for a to-do system that's really a conversation. The list lives in plain Markdown files, and each day I talk through it with Claude, which plays executive assistant and body double. This repo holds the small tools that make that loop smoother without making it more complicated.
+I like keeping my to-do list in a plain markdown file that I can access and work with in an LLM (this is helpful to me because I work better when my to-do list happens as a body doubling conversation), but I also like being able to quickly note something down on my phone when a new task comes up. 
 
-## Phone inbox
+I didn't want to create a new app to do this (hasn't worked in the past) or did I want to edit the markdown file directly from my phone (not for any logical reason. I just find it more helpful to send future to-dos as messages to actually clear them from my brain space).
 
-**The problem:** a task occurs to me while I'm away from the laptop, and I want to throw it somewhere and forget it. I don't want to open a file, and I don't want a new app.
+This repo is my current best solution to that problem and is intended only for me specifically to use. You can steal any of it that you want to, though, if you would also find some of this helpful.
 
-**How it works:**
+## Workflow: Discord Inbox
 
-1. On my phone, I type the thought into a private Discord channel (`#inbox`), in plain language, and send it. That's the whole thing.
-2. Each morning, a timer on the laptop moves everything waiting in the channel into `inbox.md` in my to-do folder, then clears it from Discord. I can also do this any time with `inbox pull`.
-3. When I sit down to triage, whichever LLM I'm working with reads `inbox.md` and folds the notes into the to-do list as part of the normal "what's new?" step.
-4. Once a note is actually written into the week's list, its line is removed from `inbox.md`. Whatever's still there hasn't been dealt with yet, like sticky notes nobody has peeled off.
+- I have a private Discord server with a channel `#inbox` where I message future-me about what to do.
+- At 7 AM or when my laptop starts, whichever comes later (almost always the laptop start), an automatic trigger dumps it into an `.md` file in my to-do list folder on my laptop. 
+  - Whenever it reads from the channel it also deletes the message from the channel; this is **not** a persistent list, more like sticky notes
+  - I can also just type `inbox pull` into the terminal from wherever and it'll do the above manually
+- I can start a conversation with an LLM (usually Claude in my case) in the to-do list folder and it'll read from both my nice, pretty, finalized to-do list and my messy, scribbled, auto-read inbox 
 
-Nothing runs in the background. Discord holds the messages until the laptop asks for them, and the bot shows as "offline" the whole time.
+## How-It's-Made for People Who Care
 
-## For coders
+(Human-readable section of README)
 
-- `inbox/inbox.py pull` reads the channel through Discord's REST API with a bot token. It appends new messages to `inbox.md` (written to a temp file and swapped in, deduped by a hidden `<!-- discord:ID -->` marker per entry), commits just that file, and only then deletes the messages from Discord. Messages with no text are left alone. `inbox/inbox` is a wrapper that runs it with uv from any directory.
-- `deploy/` has a systemd user service and timer: a daily 07:00 run, catch-up after sleep or shutdown, and a retry every minute (up to 5 tries) if the network isn't up yet.
-- The to-do repo's instructions live in `AGENTS.md`, so the inbox doesn't depend on any one LLM tool.
+- Primarily Claude-coded; see commit history & [DECISIONS.md](docs/DECISIONS.md) for details 
+- `inbox/inbox.py pull` does this (symlinked into `~/.local/bin` so I can `inbox pull` from wherever)
+  - reads the channel through Discord's REST API with a bot token
+  - appends new messages to `inbox.md` (written to a temp file and swapped in, deduped by a hidden `<!-- discord:ID -->` marker per entry
+  - commits the file
+  - deletes the messages from Discord
+- `deploy/` is set up as a systemd user service:
+  - daily 07:00 run (arbitrarily chosen by Claude, I could probably make this 09:00 or something reasonable)
+  - catches up on wake 
+  - retry every minute (up to 5 tries) if the network isn't up yet
 
-Setup: create a Discord application and bot with **Message Content Intent** on, then invite it to your channel with View Channels, Read Message History, and Manage Messages. Copy `.env.example` to `.env` and fill it in (`INBOX_FILE` sets where notes land). Then link and enable the timer. The full checklist is in [docs/HUMAN.md](docs/HUMAN.md).
+Setup:
+
+Make a discord bot with the following permissions:
+
+  - Installation tab:
+    - **Turn off** Install Link (you will get one later)
+  - Bot tab:
+    - Reset token: grab your token and SAVE IT SOMEWHERE
+    - Authorization Flow permissions:
+      - **Turn off** Public bot
+      - **Turn on** Message Content Intent
+  - OAuth2 tab:
+    - click **bot**
+    - select:
+      - View Channels
+      - Read Message History
+      - Manage Messages
+
+Copy `.env.example` to `.env` and put in your bot token (did you save it?) and your channel ID where you're sending messages (right click the channel name; need Developer permissions).
 
 Tests: `uv run pytest`.
+
+## How-It's-Made for Bots who Need to Know
+
+(This is for the robots)
 
 ## Docs
 
@@ -32,3 +62,5 @@ Tests: `uv run pytest`.
 - [docs/HUMAN.md](docs/HUMAN.md): setup steps and to-dos for me
 - [docs/HANDOFF.md](docs/HANDOFF.md): notes for the next Claude session
 - [docs/plans/](docs/plans/): approved build plans
+
+Templated from [cc-template](https://github.com/alackles/cc-template).
