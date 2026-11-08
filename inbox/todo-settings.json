@@ -1,0 +1,22 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/acacia/Documents/software/productivity-tooling/todo-flow/inbox/inbox pull",
+            "timeout": 20,
+            "statusMessage": "Checking the Discord inbox..."
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(/home/acacia/Documents/software/productivity-tooling/todo-flow/inbox/inbox ack *)"
+    ]
+  }
+}
