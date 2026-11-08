@@ -2,7 +2,7 @@
 
 I like keeping my to-do list in a plain markdown file that I can access and work with in an LLM (this is helpful to me because I work better when my to-do list happens as a body doubling conversation), but I also like being able to quickly note something down on my phone when a new task comes up. 
 
-I didn't want to create a new app to do this (hasn't worked in the past) or did I want to edit the markdown file directly from my phone (not for any logical reason. I just find it more helpful to send future to-dos as messages to actually clear them from my brain space).
+I didn't want to create a new app to do this (hasn't worked in the past) nor did I want to edit the markdown file directly from my phone (not for any logical reason. I just find it more helpful to send future to-dos as messages to actually clear them from my brain space).
 
 This repo is my current best solution to that problem and is intended only for me specifically to use. You can steal any of it that you want to, though, if you would also find some of this helpful.
 
