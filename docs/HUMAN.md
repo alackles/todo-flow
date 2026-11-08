@@ -8,17 +8,9 @@ Running to-do list and handoff notes for the human side of the project. Move ite
 
 ## Next time
 
-Step 16a (make `inbox` a command), then 17 (morning timer). After that, the todo repo steps.
+Step 17 (morning timer), then the todo repo steps.
 
 ## To do
-
-**Make `inbox` a command you can run anywhere**
-
-- [ ] 16a. Symlink the wrapper into your personal bin folder (no sudo; it's already on your PATH):
-  ```
-  ln -s ~/Documents/software/productivity-tooling/todo-flow/inbox/inbox ~/.local/bin/inbox
-  ```
-  Then, from `~/Documents/todo` or anywhere else, `inbox pull` should work. Because it's a symlink, edits to the repo apply automatically. To undo, `rm ~/.local/bin/inbox`.
 
 **Morning timer** (from the todo-flow folder)
 
@@ -52,6 +44,7 @@ Step 16a (make `inbox` a command), then 17 (morning timer). After that, the todo
 - 2026-11-08: Live checks against real Discord passed: empty inbox, multi-line messages in order with IDs, ack deletes on the phone, bad token fails soft, and the hook delivers the inbox into a Claude Code session in `~/Documents/todo` (steps 8–12).
 - 2026-11-08: Decided on the inbox.md redesign: move on pull, commit only, run on wake, AGENTS.md.
 - 2026-11-08: Redesign live checks passed: two messages (one multi-line) moved into `inbox.md` and committed, `#inbox` emptied, and a second pull reports nothing new (steps 15–16).
+- 2026-11-08: `inbox` is a command anywhere, via a symlink at `~/.local/bin/inbox` (undo: `rm ~/.local/bin/inbox`) (step 16a).
 
 ## Good to know
 
