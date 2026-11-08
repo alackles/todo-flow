@@ -2,24 +2,40 @@
 
 ## What this repo is, in practice
 
-Plumbing for Acacia's todo triage. The triage itself happens in conversation, now in Claude Code from `~/Documents/todo/` (it moved from Claude.ai on 2026-11-08). The real triage instructions live in `~/Documents/todo/CLAUDE.md`. `CLAUDE.todo.md` here is the older reference copy it was built from, so don't treat it as current.
+Plumbing for Acacia's todo triage. The triage itself happens in conversation, now in Claude Code (or any LLM) from `~/Documents/todo/`. It moved there from Claude.ai on 2026-11-08. The real triage instructions are in `~/Documents/todo/AGENTS.md`; `CLAUDE.md` there just imports it. `CLAUDE.todo.md` here is the older reference copy, so don't treat it as current.
 
-## The phone inbox (built 2026-11-08)
+## The phone inbox (built 2026-11-08, redesigned the same day)
 
-She texts herself through a private Discord channel. The channel itself is the inbox, so there's no intermediate file, deliberately: she doesn't use files she has to append to, and it has to feel like sending a message off into the void.
+She texts herself through a private Discord channel. On her side, it has to feel like sending a message off into the void, never like appending to a file. A file on the laptop side is fine, because only the script writes to it.
 
-- `inbox/inbox.py` (run via the `inbox/inbox` bash wrapper) has two commands. `pull` reads every non-bot message and prints it with its ID. `ack <ids>` deletes those messages.
-- It's REST only, so no process runs. The `.env` at the repo root holds `INBOX_BOT_TOKEN` and `INBOX_CHANNEL_ID`.
-- The SessionStart hook in the todo repo runs `pull`. The triage Claude files the items, saves the file, then runs `ack` with exactly those IDs. Deleting is the point: she wants sticky notes, not a history. It also keeps sensitive details from sitting on Discord.
-- `pull` must never fail loudly, because it runs at session start. Keep that property if you touch it.
-- Tests: `uv run pytest`, 5 tests, all with mocked HTTP.
+**Current design: move on pull.** `inbox/inbox pull` (a bash wrapper running `inbox.py` under uv) does five things, in order:
+
+1. Fetches every non-bot message in the channel.
+2. Adds the ones not already there to `~/Documents/todo/inbox.md`, deduping by hidden `<!-- discord:ID -->` markers. The file is written to a temp copy and swapped in.
+3. Commits only that file, as "todo-flow inbox".
+4. Deletes from Discord everything that's now in the file.
+5. Leaves messages with no text in Discord, so nothing gets deleted with nothing saved.
+
+After that, any LLM reads `inbox.md`, files the entries into the week file, then removes them and commits. A systemd user timer (`deploy/`) runs the pull at 07:00 with `Persistent=true`, and retries on failure for wifi-after-wake. Nothing else triggers it.
+
+**Superseded first design, so you know what the history is about:** the first version used a SessionStart hook that printed the inbox, plus an `ack` command that Claude ran after filing. Acacia preferred something less automatic and not tied to Claude, so `ack` and the hook are gone. Don't bring them back.
+
+The invariant across both designs: a note must never exist nowhere. It's in Discord until it's safely in the file, and in the file until it's in the week file.
+
+Tests: `uv run pytest` runs 4 tests with fake HTTP and a fake git. During the build, `commit_inbox` was smoke-tested once by hand against a throwaway repo.
 
 ## Where things stand
 
-As of 2026-11-08, nothing has run against real Discord yet. Acacia has to do the Discord app setup and copy `inbox/todo-settings.json` into `~/Documents/todo/.claude/settings.json` herself. Auto mode blocked Claude from writing that file, since it's a hook plus a pre-approved delete. All of it is checklisted in `docs/HUMAN.md`. If she says the live checks failed, the likeliest causes are Message Content Intent being off (messages come back blank, and `pull` prints a hint) or the bot missing Manage Messages (ack fails with HTTP 403).
+As of 2026-11-08, the redesign hasn't been run live yet. Acacia's remaining steps, listed in `docs/HUMAN.md`, are:
+
+- a live pull
+- installing the timer
+- adding the VPS remote for the todo repo (a bare repo on her VPS, not GitHub)
+- bringing her current list over from Claude.ai
+
+Earlier she had wanted to work out VPS things herself by asking questions. HUMAN.md has commands for the remote, but if she asks, let her lead.
 
 ## Open threads
 
-- Pre-approving `ack` was flagged, and the plan was approved, but she never answered that specific point. It's worth a one-line check sometime.
 - Parked idea: a morning pre-sort routine (in HUMAN.md). Don't build it unless she brings it up.
-- No attachments in v1. Image messages show as "(no text)".
+- No attachments; a photo stays in Discord. If she starts sending photos, that's the next feature.

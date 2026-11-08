@@ -9,20 +9,19 @@ Plumbing for a to-do system that's really a conversation. The list lives in plai
 **How it works:**
 
 1. On my phone, I type the thought into a private Discord channel (`#inbox`), in plain language, and send it. That's the whole thing.
-2. Next time I start a triage session on the laptop, a startup hook reads the channel and hands everything waiting there to Claude.
-3. Claude folds those items into the to-do list as part of the normal "what's new?" step.
-4. Once an item is actually written into the list file, Claude deletes its Discord message. Whatever is still in the channel hasn't been picked up yet, like sticky notes nobody has peeled off.
+2. Each morning, a timer on the laptop moves everything waiting in the channel into `inbox.md` in my to-do folder, then clears it from Discord. I can also do this any time with `inbox pull`.
+3. When I sit down to triage, whichever LLM I'm working with reads `inbox.md` and folds the notes into the to-do list as part of the normal "what's new?" step.
+4. Once a note is actually written into the week's list, its line is removed from `inbox.md`. Whatever's still there hasn't been dealt with yet, like sticky notes nobody has peeled off.
 
-Nothing runs in the background. Discord holds the messages until the laptop asks for them.
+Nothing runs in the background. Discord holds the messages until the laptop asks for them, and the bot shows as "offline" the whole time.
 
 ## For coders
 
-- `inbox/inbox.py` reads (`pull`) and deletes (`ack <ids>`) messages through Discord's REST API, using a bot token. `inbox/inbox` is a wrapper that runs it with uv from any directory.
-- `pull` is read-only and fails soft: errors print one line and exit 0, because it runs as a Claude Code `SessionStart` hook.
-- `ack` deletes only the message IDs it's given.
-- `inbox/todo-settings.json` is the hook and permission config for the todo repo's `.claude/settings.json`.
+- `inbox/inbox.py pull` reads the channel through Discord's REST API with a bot token. It appends new messages to `inbox.md` (written to a temp file and swapped in, deduped by a hidden `<!-- discord:ID -->` marker per entry), commits just that file, and only then deletes the messages from Discord. Messages with no text are left alone. `inbox/inbox` is a wrapper that runs it with uv from any directory.
+- `deploy/` has a systemd user service and timer: a daily 07:00 run, catch-up after sleep or shutdown, and a retry every minute (up to 5 tries) if the network isn't up yet.
+- The to-do repo's instructions live in `AGENTS.md`, so the inbox doesn't depend on any one LLM tool.
 
-Setup: create a Discord application and bot with **Message Content Intent** on, then invite it to your channel with View Channels, Read Message History, and Manage Messages. Copy `.env.example` to `.env` and fill it in, then copy the settings file into your todo repo. The full checklist is in [docs/HUMAN.md](docs/HUMAN.md).
+Setup: create a Discord application and bot with **Message Content Intent** on, then invite it to your channel with View Channels, Read Message History, and Manage Messages. Copy `.env.example` to `.env` and fill it in (`INBOX_FILE` sets where notes land). Then link and enable the timer. The full checklist is in [docs/HUMAN.md](docs/HUMAN.md).
 
 Tests: `uv run pytest`.
 

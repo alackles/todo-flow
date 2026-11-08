@@ -4,39 +4,61 @@ Running to-do list and handoff notes for the human side of the project. Move ite
 
 ## Status
 
-2026-11-08: Phone inbox is built and tested offline. It needs the Discord setup below before it can do anything real.
+2026-11-08: Inbox redesign is built: `inbox pull` now moves Discord messages into `~/Documents/todo/inbox.md` and commits it. The session-start hook has been removed. Tests pass. The live run and timer install are yours.
 
 ## Next time
 
-Run the live checks (steps 8–12) on the laptop. After that, the next triage session runs in Claude Code from `~/Documents/todo` instead of Claude.ai.
+Steps 15–17: one live pull, then install the morning timer. After that, the todo repo steps.
 
 ## To do
 
-**Live checks**
+**Inbox redesign: live checks**
 
-- [ ] 8. `inbox/inbox pull` on the empty channel prints "Discord inbox: empty."
-- [ ] 9. Send two messages from the phone, one of them multi-line. `inbox/inbox pull` shows both, oldest first, with IDs.
-- [ ] 10. `inbox/inbox ack <one id>`. That message disappears on the phone, and `pull` now shows one.
-- [ ] 11. Put a wrong token in `.env`. `pull` prints the "couldn't reach the inbox" line and doesn't crash. Put the right token back.
-- [ ] 12. Start `claude` in `~/Documents/todo`. The inbox output should be in the session from the start. Ask Claude what's in the inbox to confirm.
+- [ ] 15. Send two messages from the phone, one of them multi-line. Run `inbox/inbox pull` from any folder. Check that:
+  - `~/Documents/todo/inbox.md` has both entries
+  - `git -C ~/Documents/todo log --oneline` shows `inbox: +2 from phone`
+  - `#inbox` is empty on the phone
+- [ ] 16. Run `inbox/inbox pull` again. It should print "Inbox: nothing new." and make no new commit.
+
+**Morning timer** (from the todo-flow folder)
+
+- [ ] 17. Install and turn on the timer:
+  ```
+  systemctl --user link "$PWD/deploy/inbox-pull.service" "$PWD/deploy/inbox-pull.timer"
+  systemctl --user enable --now inbox-pull.timer
+  systemctl --user list-timers inbox-pull.timer      # shows the next 07:00 run
+  systemctl --user start inbox-pull.service          # one run now, as a test
+  journalctl --user -u inbox-pull -n 20              # what that run printed
+  ```
+  To change the time, edit `OnCalendar=` in `deploy/inbox-pull.timer`, then run `systemctl --user daemon-reload`.
 
 **Todo repo**
 
-- [ ] 13. Create a **private** GitHub repo for `~/Documents/todo`, then add it as the remote and push.
-- [ ] 14. Bring the current list over from Claude.ai as the first week file (e.g. `week-of-nov-9-monday.md`).
+- [ ] 18. Back up `~/Documents/todo` to the VPS (instead of GitHub). Make a bare repo there, add it as a remote, and push. If you'd rather work this one out yourself, ignore the commands:
+  ```
+  ssh <vps> 'git init --bare ~/backups/todo.git'
+  git -C ~/Documents/todo remote add vps <vps>:backups/todo.git
+  git -C ~/Documents/todo push -u vps main
+  ```
+  After that, `git push` whenever you feel like it. The timer only commits, never pushes.
+- [ ] 19. Bring the current list over from Claude.ai as the first week file (e.g. `week-of-nov-9-monday.md`).
+- [ ] 20. In a fresh `claude` session in `~/Documents/todo`, ask what's in the inbox. It should answer from `inbox.md`, with no hook involved.
 
 ## Done
 
 - 2026-11-08: Decided on the Discord-channel inbox design (see DECISIONS.md).
 - 2026-11-08: Discord setup done: private server and `#inbox`, bot app (Public Bot off, Message Content Intent on), bot invited with View Channels / Read Message History / Manage Messages, channel ID copied, `.env` filled in, channel favorited on the phone (steps 1–6).
-- 2026-11-08: Hook installed: `inbox/todo-settings.json` copied to `~/Documents/todo/.claude/settings.json` (step 7).
+- 2026-11-08: Hook installed: `inbox/todo-settings.json` copied to `~/Documents/todo/.claude/settings.json` (step 7). *Since removed by Claude in the redesign.*
+- 2026-11-08: Live checks against real Discord passed: empty inbox, multi-line messages in order with IDs, ack deletes on the phone, bad token fails soft, and the hook delivers the inbox into a Claude Code session in `~/Documents/todo` (steps 8–12).
+- 2026-11-08: Decided on the inbox.md redesign: move on pull, commit only, run on wake, AGENTS.md.
 
 ## Good to know
 
-- **The inbox bot always shows as "offline" in Discord. That's correct.** Discord only shows a bot as online while it holds a live connection open, and this one never does. It wakes up at session start, reads the channel, and leaves. No VPS or background service needed; messages wait in Discord until the laptop asks.
+- **The inbox bot always shows as "offline" in Discord. That's correct.** Discord only shows a bot as online while it holds a live connection open, and this one never does. It wakes up when `inbox pull` runs, moves the messages, and leaves. No VPS or background service needed; messages wait in Discord until the laptop asks.
+- `inbox/inbox pull` works from any folder. It moves every waiting note into `~/Documents/todo/inbox.md`, commits that file, and then clears the notes from Discord. A note with no text (e.g. just a photo) is left in Discord.
+- Once a note is in `inbox.md`, the file is the only copy. Its safety net is the todo repo's git history.
 - Running the tests: `uv run pytest` from the todo-flow folder.
-- The inbox command is `todo-flow/inbox/inbox pull` or `... ack <ids>`. It works from any folder.
-- `~/Documents/todo/CLAUDE.md` holds the real triage instructions now. `CLAUDE.todo.md` in this repo is the older reference copy.
+- `~/Documents/todo/AGENTS.md` holds the real triage instructions now; `CLAUDE.md` there just points to it. `CLAUDE.todo.md` in this repo is the older reference copy.
 
 ## Parked ideas
 
