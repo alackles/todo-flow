@@ -26,14 +26,14 @@ Tests: `uv run pytest` runs 4 tests with fake HTTP and a fake git. During the bu
 
 ## Where things stand
 
-As of 2026-11-08, the redesign hasn't been run live yet. Acacia's remaining steps, listed in `docs/HUMAN.md`, are:
+As of 2026-11-08, everything is set up and working live:
 
-- a live pull
-- installing the timer
-- adding the VPS remote for the todo repo (a bare repo on her VPS, not GitHub)
-- bringing her current list over from Claude.ai
+- `inbox pull` has moved real messages.
+- `inbox` is on her PATH through a symlink at `~/.local/bin/inbox`. The wrapper uses `readlink -f`, so the symlink works.
+- The systemd timer is linked and enabled.
+- The todo repo has a `vps` remote (a bare repo on her VPS) and has been pushed to it.
 
-Earlier she had wanted to work out VPS things herself by asking questions. HUMAN.md has commands for the remote, but if she asks, let her lead.
+The first real use is planned for Monday 2026-11-09 AM. She'll bring her current list over from Claude.ai as the first week file and confirm that a fresh session reads `inbox.md` by following AGENTS.md. If she comes back here afterward, ask how the first morning went before suggesting anything new. Real use is what decides the next feature.
 
 ## Open threads
 

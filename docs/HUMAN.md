@@ -4,35 +4,16 @@ Running to-do list and handoff notes for the human side of the project. Move ite
 
 ## Status
 
-2026-11-08: Inbox redesign is built: `inbox pull` now moves Discord messages into `~/Documents/todo/inbox.md` and commits it. The session-start hook has been removed. Tests pass. The live run and timer install are yours.
+2026-11-08: The phone inbox is fully set up: the morning timer is running and the todo repo is backed up to the VPS. All that's left is the first real use, Monday morning (2026-11-09).
 
 ## Next time
 
-Step 17 (morning timer), then the todo repo steps.
+Monday AM: steps 19 and 20, which are just the first real triage session in Claude Code.
 
 ## To do
 
-**Morning timer** (from the todo-flow folder)
+**First real use (Monday AM)**
 
-- [ ] 17. Install and turn on the timer:
-  ```
-  systemctl --user link "$PWD/deploy/inbox-pull.service" "$PWD/deploy/inbox-pull.timer"
-  systemctl --user enable --now inbox-pull.timer
-  systemctl --user list-timers inbox-pull.timer      # shows the next 07:00 run
-  systemctl --user start inbox-pull.service          # one run now, as a test
-  journalctl --user -u inbox-pull -n 20              # what that run printed
-  ```
-  To change the time, edit `OnCalendar=` in `deploy/inbox-pull.timer`, then run `systemctl --user daemon-reload`.
-
-**Todo repo**
-
-- [ ] 18. Back up `~/Documents/todo` to the VPS (instead of GitHub). Make a bare repo there, add it as a remote, and push. If you'd rather work this one out yourself, ignore the commands:
-  ```
-  ssh <vps> 'git init --bare ~/backups/todo.git'
-  git -C ~/Documents/todo remote add vps <vps>:backups/todo.git
-  git -C ~/Documents/todo push -u vps main
-  ```
-  After that, `git push` whenever you feel like it. The timer only commits, never pushes.
 - [ ] 19. Bring the current list over from Claude.ai as the first week file (e.g. `week-of-nov-9-monday.md`).
 - [ ] 20. In a fresh `claude` session in `~/Documents/todo`, ask what's in the inbox. It should answer from `inbox.md`, with no hook involved.
 
@@ -45,6 +26,8 @@ Step 17 (morning timer), then the todo repo steps.
 - 2026-11-08: Decided on the inbox.md redesign: move on pull, commit only, run on wake, AGENTS.md.
 - 2026-11-08: Redesign live checks passed: two messages (one multi-line) moved into `inbox.md` and committed, `#inbox` emptied, and a second pull reports nothing new (steps 15–16).
 - 2026-11-08: `inbox` is a command anywhere, via a symlink at `~/.local/bin/inbox` (undo: `rm ~/.local/bin/inbox`) (step 16a).
+- 2026-11-08: Morning timer linked and enabled (`systemctl --user link` + `enable --now`). It runs at 07:00, catches up on wake or boot, and logs to `journalctl --user -u inbox-pull`. To change the time, edit `OnCalendar=` in `deploy/inbox-pull.timer`, then run `systemctl --user daemon-reload` (step 17).
+- 2026-11-08: Todo repo backed up to a bare repo on the VPS as remote `vps`. `git push` by hand whenever you like; the timer only commits (step 18).
 
 ## Good to know
 
