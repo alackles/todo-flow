@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs inbox.py in this repo's uv environment, from any working directory.
 # Run by hand or by the inbox-pull systemd timer (see deploy/).
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# readlink -f follows a symlink (e.g. ~/.local/bin/inbox) back to this folder.
+DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 UV="$(command -v uv || echo "$HOME/.local/bin/uv")"
 if [ ! -x "$UV" ]; then
     echo "Discord inbox: couldn't run (uv not found). Messages are still safe in Discord." >&2

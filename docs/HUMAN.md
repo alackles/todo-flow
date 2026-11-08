@@ -8,17 +8,17 @@ Running to-do list and handoff notes for the human side of the project. Move ite
 
 ## Next time
 
-Steps 15–17: one live pull, then install the morning timer. After that, the todo repo steps.
+Step 16a (make `inbox` a command), then 17 (morning timer). After that, the todo repo steps.
 
 ## To do
 
-**Inbox redesign: live checks**
+**Make `inbox` a command you can run anywhere**
 
-- [ ] 15. Send two messages from the phone, one of them multi-line. Run `inbox/inbox pull` from any folder. Check that:
-  - `~/Documents/todo/inbox.md` has both entries
-  - `git -C ~/Documents/todo log --oneline` shows `inbox: +2 from phone`
-  - `#inbox` is empty on the phone
-- [ ] 16. Run `inbox/inbox pull` again. It should print "Inbox: nothing new." and make no new commit.
+- [ ] 16a. Symlink the wrapper into your personal bin folder (no sudo; it's already on your PATH):
+  ```
+  ln -s ~/Documents/software/productivity-tooling/todo-flow/inbox/inbox ~/.local/bin/inbox
+  ```
+  Then, from `~/Documents/todo` or anywhere else, `inbox pull` should work. Because it's a symlink, edits to the repo apply automatically. To undo, `rm ~/.local/bin/inbox`.
 
 **Morning timer** (from the todo-flow folder)
 
@@ -51,11 +51,12 @@ Steps 15–17: one live pull, then install the morning timer. After that, the to
 - 2026-11-08: Hook installed: `inbox/todo-settings.json` copied to `~/Documents/todo/.claude/settings.json` (step 7). *Since removed by Claude in the redesign.*
 - 2026-11-08: Live checks against real Discord passed: empty inbox, multi-line messages in order with IDs, ack deletes on the phone, bad token fails soft, and the hook delivers the inbox into a Claude Code session in `~/Documents/todo` (steps 8–12).
 - 2026-11-08: Decided on the inbox.md redesign: move on pull, commit only, run on wake, AGENTS.md.
+- 2026-11-08: Redesign live checks passed: two messages (one multi-line) moved into `inbox.md` and committed, `#inbox` emptied, and a second pull reports nothing new (steps 15–16).
 
 ## Good to know
 
 - **The inbox bot always shows as "offline" in Discord. That's correct.** Discord only shows a bot as online while it holds a live connection open, and this one never does. It wakes up when `inbox pull` runs, moves the messages, and leaves. No VPS or background service needed; messages wait in Discord until the laptop asks.
-- `inbox/inbox pull` works from any folder. It moves every waiting note into `~/Documents/todo/inbox.md`, commits that file, and then clears the notes from Discord. A note with no text (e.g. just a photo) is left in Discord.
+- `inbox pull` (after step 16a; before that, use the full path `.../todo-flow/inbox/inbox pull`) moves every waiting note into `~/Documents/todo/inbox.md`, commits that file, and then clears the notes from Discord. A note with no text (e.g. just a photo) is left in Discord.
 - Once a note is in `inbox.md`, the file is the only copy. Its safety net is the todo repo's git history.
 - Running the tests: `uv run pytest` from the todo-flow folder.
 - `~/Documents/todo/AGENTS.md` holds the real triage instructions now; `CLAUDE.md` there just points to it. `CLAUDE.todo.md` in this repo is the older reference copy.
