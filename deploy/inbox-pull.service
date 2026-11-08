@@ -1,0 +1,12 @@
+[Unit]
+Description=Move phone notes from Discord into the todo inbox.md
+# Retries (below) count toward this limit: at most 5 tries in 10 minutes.
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=oneshot
+ExecStart=/home/acacia/Documents/software/productivity-tooling/todo-flow/inbox/inbox pull
+# Right after waking, wifi may not be back yet. Try again a minute later.
+Restart=on-failure
+RestartSec=60

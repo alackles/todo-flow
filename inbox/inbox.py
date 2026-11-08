@@ -1,16 +1,19 @@
-"""Read and clear the Discord inbox channel.
+"""Move phone notes from the Discord inbox channel into inbox.md.
 
-    inbox pull            print every waiting message (never deletes anything)
-    inbox ack ID [ID ...] delete messages that have been filed into the todo list
+    inbox pull    add every waiting message to inbox.md, commit it, then
+                  delete those messages from Discord
 
 Talks to Discord's REST API with a bot token; nothing stays running.
-Reads INBOX_BOT_TOKEN and INBOX_CHANNEL_ID from the .env at the repo root,
-found relative to this file so it works from any working directory.
-Run it through the `inbox` wrapper next to this file.
+Reads INBOX_BOT_TOKEN, INBOX_CHANNEL_ID and (optionally) INBOX_FILE from the
+.env at the repo root, found relative to this file so it works from any
+working directory. Run it through the `inbox` wrapper next to this file.
 """
 
 import os
+import re
+import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
@@ -21,17 +24,21 @@ from dotenv import load_dotenv
 API = "https://discord.com/api/v10"
 ROOT = Path(__file__).resolve().parent.parent
 ENV_PATH = ROOT / ".env"
-WRAPPER = Path(__file__).resolve().parent / "inbox"
+DEFAULT_INBOX = "~/Documents/todo/inbox.md"
 # Plain messages and replies. Skips pins, joins, and other system messages.
 USER_MESSAGE_TYPES = {0, 19}
+# Hidden marker on each entry, so a message is never added twice.
+ID_MARKER = re.compile(r"<!-- discord:(\d+) -->")
 
-SOFT_FAIL = (
-    "Discord inbox: couldn't reach the inbox ({reason}). "
-    "Messages are still safe in Discord; nothing was lost."
-)
-BLANK_HINT = (
-    "(Every message came back blank. Message Content Intent is probably off: "
-    "Discord developer portal -> the inbox app -> Bot -> Message Content Intent.)"
+HEADER = """# Inbox
+
+Notes sent from Acacia's phone, oldest first, moved here by `inbox pull`.
+Remove an entry only after it's filed in the week file (see AGENTS.md).
+"""
+NO_TEXT_NOTE = (
+    "{n} message(s) had no text and were left in Discord. Attachments aren't "
+    "supported. If every message looks blank, Message Content Intent is off: "
+    "Discord developer portal -> the inbox app -> Bot -> Message Content Intent."
 )
 
 
@@ -47,14 +54,15 @@ def load_config():
     channel = os.environ.get("INBOX_CHANNEL_ID", "").strip()
     if not token or not channel:
         raise InboxError(f"INBOX_BOT_TOKEN or INBOX_CHANNEL_ID missing from {ENV_PATH}")
-    return token, channel
+    inbox = Path(os.environ.get("INBOX_FILE", "").strip() or DEFAULT_INBOX).expanduser()
+    return token, channel, inbox
 
 
 def request(token, method, path, params=None):
     """One Discord API call, waiting out rate limits. Errors never include the token."""
     headers = {
         "Authorization": f"Bot {token}",
-        "User-Agent": "DiscordBot (todo-flow inbox, 0.1)",
+        "User-Agent": "DiscordBot (todo-flow inbox, 0.2)",
     }
     for _ in range(3):
         resp = requests.request(method, API + path, headers=headers, params=params, timeout=10)
@@ -107,65 +115,95 @@ def format_when(timestamp):
     return local.strftime("%a %b %-d, %-I:%M %p")
 
 
-def format_pull(messages):
-    if not messages:
-        return "Discord inbox: empty."
-    lines = [
-        f"Discord inbox: {len(messages)} message(s) from Acacia's phone, oldest first.",
-        "File each one into the todo list (or drop it if she says so), save the file,",
-        f"then delete exactly those with: {WRAPPER} ack <id> [<id> ...]",
-        "Anything not acked stays in Discord and shows up again next session.",
-        "",
-    ]
-    for m in messages:
-        text = m.get("content") or "(no text)"
-        first, *rest = text.splitlines() or ["(no text)"]
-        lines.append(f"[{m['id']}] {format_when(m['timestamp'])}: {first}")
-        lines.extend(f"    {line}" for line in rest)
-    if all(not m.get("content") for m in messages):
-        lines += ["", BLANK_HINT]
+def format_entry(m):
+    first, *rest = m["content"].splitlines()
+    lines = [f"- {format_when(m['timestamp'])}: {first} <!-- discord:{m['id']} -->"]
+    lines += [f"  {line}".rstrip() for line in rest]
     return "\n".join(lines)
 
 
+def existing_ids(path):
+    return set(ID_MARKER.findall(path.read_text())) if path.exists() else set()
+
+
+def add_to_inbox(path, entries):
+    """Append entries to inbox.md. Written to a temp file and swapped in, so a
+    crash mid-write leaves the old file intact rather than a half-written one."""
+    text = path.read_text() if path.exists() else HEADER + "\n"
+    if not text.endswith("\n"):
+        text += "\n"
+    text += "\n".join(entries) + "\n"
+    mode = path.stat().st_mode if path.exists() else 0o644
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".inbox-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
+def commit_inbox(path, count):
+    """Commit only inbox.md, so nothing else that happens to be staged rides along."""
+    git = ["git", "-C", str(path.parent)]
+    subprocess.run(git + ["add", "--", path.name], check=True, capture_output=True)
+    subprocess.run(
+        git + ["commit", "--quiet", "--author", "todo-flow inbox <inbox@localhost>",
+               "-m", f"inbox: +{count} from phone", "--", path.name],
+        check=True, capture_output=True,
+    )
+
+
 def cmd_pull():
-    # This runs as a session-start hook, so it must never fail loudly.
     try:
-        token, channel = load_config()
-        print(format_pull(fetch_messages(token, channel)))
+        token, channel, inbox = load_config()
+        messages = fetch_messages(token, channel)
     except Exception as e:
-        print(SOFT_FAIL.format(reason=e))
-    return 0
-
-
-def cmd_ack(ids):
-    if not ids:
-        print("usage: inbox ack <message id> [<message id> ...]")
-        return 2
-    try:
-        token, channel = load_config()
-    except InboxError as e:
-        print(f"Discord inbox: {e}")
+        print(f"Discord inbox: couldn't reach it ({e}). Nothing was moved.", file=sys.stderr)
         return 1
-    failed = 0
-    for mid in ids:
-        if not mid.isdigit():
-            failed += 1
-            print(f"[{mid}] skipped: not a message ID")
-            continue
+
+    # A message with no text can't be written down, so it stays in Discord.
+    textless = [m for m in messages if not m.get("content", "").strip()]
+    messages = [m for m in messages if m.get("content", "").strip()]
+    if textless:
+        print(NO_TEXT_NOTE.format(n=len(textless)), file=sys.stderr)
+
+    seen = existing_ids(inbox)
+    new = [m for m in messages if m["id"] not in seen]
+    if new:
         try:
-            deleted = delete_message(token, channel, mid)
-            print(f"[{mid}] deleted" if deleted else f"[{mid}] already gone")
+            add_to_inbox(inbox, [format_entry(m) for m in new])
+        except OSError as e:
+            print(f"Couldn't write {inbox} ({e}). Nothing was deleted from Discord.",
+                  file=sys.stderr)
+            return 1
+        try:
+            commit_inbox(inbox, len(new))
+        except (OSError, subprocess.CalledProcessError) as e:
+            print(f"Warning: saved to {inbox} but not committed ({e}).", file=sys.stderr)
+
+    # Everything with text is now safely in the file, including any left over
+    # from an earlier run whose delete failed, so all of it can go.
+    failed = 0
+    for m in messages:
+        try:
+            delete_message(token, channel, m["id"])
         except Exception as e:
             failed += 1
-            print(f"[{mid}] FAILED, still in Discord: {e}")
+            print(f"[{m['id']}] couldn't delete from Discord ({e}). It's safe in the "
+                  "file and won't be added twice.", file=sys.stderr)
+
+    print(f"Moved {len(new)} message(s) to {inbox}." if new else "Inbox: nothing new.")
     return 1 if failed else 0
 
 
 def main(argv):
     if argv[:1] == ["pull"]:
         return cmd_pull()
-    if argv[:1] == ["ack"]:
-        return cmd_ack(argv[1:])
     print(__doc__.strip())
     return 2
 

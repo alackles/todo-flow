@@ -1,0 +1,12 @@
+[Unit]
+Description=Morning inbox pull (catches up after sleep or shutdown)
+
+[Timer]
+# Change the time here, then: systemctl --user daemon-reload
+OnCalendar=*-*-* 07:00
+# If the laptop was off at 07:00, run at the next boot. (A run missed
+# during suspend fires on resume regardless.)
+Persistent=true
+
+[Install]
+WantedBy=timers.target
