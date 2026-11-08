@@ -18,6 +18,8 @@ This repo is my current best solution to that problem and is intended only for m
 
 (Human-readable section of README)
 
+### Additional Plumbing Details
+
 - Primarily Claude-coded; see commit history & [DECISIONS.md](docs/DECISIONS.md) for details 
 - `inbox/inbox.py pull` does this (symlinked into `~/.local/bin` so I can `inbox pull` from wherever)
   - reads the channel through Discord's REST API with a bot token
@@ -29,7 +31,7 @@ This repo is my current best solution to that problem and is intended only for m
   - catches up on wake 
   - retry every minute (up to 5 tries) if the network isn't up yet
 
-Setup:
+### Setup
 
 Make a discord bot with the following permissions:
 
