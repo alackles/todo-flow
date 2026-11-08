@@ -1,8 +1,8 @@
-# TITLE OF PROJECT
+# TODO FLOW
 
 ## What This Is
 
-[description of project, 4-5 sentences max]
+A personalized workflow for externalizing my to-do list across personal/academic life. Traditional to-do apps are less-than-helpful to me because they accumulate dust over time and assume a lot about continuity between states. Whan I've found works is essentially a rolling .md file of tasks that I can add to and drop over time with an LLM acting as an executive assistant that helps me to triage working through the list by talking to me about it. See @CLAUDE.todo.md for the instructions for the to-do list (not for you), to understand the use case. This repository is for slowly adding features over time to make that workflow smoother without losing the simplicity of it.
 
 ## Specifications
 
@@ -10,11 +10,15 @@ See @SPEC.md for full specs. **Do not edit SPEC.md** -- when changes arise or de
 
 ## Working agreement
 
-[norms & goals to follow for the project - e.g., "The goal is something that just works"; "Must be securely robust to injection attacks"; things like that.]
+I expect this to be a project that evolves over time as I hit friction that is worth fixing. It may sometimes sit for months; it may sometimes get new features in a burst; it may sometimes roll back as things work or don't. Treat this whole project as the plumbing behind the scenes. 
 
 ## Architecture Overview
 
-[begin with any initial constraints on stack or deployment; fills in over time as the project is built]
+Two machines are primarily involved and should talk to each other:
+
+- My work/personal laptop: System76 Oryx Pro 11 running PopOS Cosmic (this is where I am when I am doing to-do-list relevant tasks)
+- My phone: Samsung Galaxy S22 Android (this is where I need to occasionally quickly write down a task and have it show up clean in a markdown file for next time I open the laptop)
+
 
 ## Documentation
 
@@ -29,4 +33,4 @@ Freely update all these documents (except SPEC.md).
 
 ## Additional Notes
 
-[any notes or additional things you want claude to know at the outset of a project or on each turn]
+None currently.
